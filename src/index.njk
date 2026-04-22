@@ -1,24 +1,23 @@
 ---
 layout: layouts/base.njk
-title: What's Happening in White Plains
-metaDescription: A neighborhood-centered guide to events, civic life, and useful local information around White Plains.
+title: White Plains Council of Neighborhood Associations
+metaDescription: The neighborhood-centered civic hub for agendas, events, represented neighborhoods, and useful White Plains information.
 ---
-{% from "components/macros.njk" import eventCard, neighborhoodCard, resourceCard %}
+{% from "components/macros.njk" import eventCard, resourceCard %}
 
 <section class="hero hero-home">
   <img src="{{ site.heroImage | withPrefix }}" alt="{{ site.heroImageAlt }}" loading="eager">
   <div class="hero-overlay">
     <div class="wrap">
       <p class="eyebrow">White Plains, New York</p>
-      <h1>What's happening in White Plains</h1>
-      <p>Events, neighborhoods, and civic life in the county seat of Westchester.</p>
-      <p class="hero-note">{{ site.mission }}</p>
+      <h1>The Voice of the Neighborhoods</h1>
+      <p>A Forum for Neighborhood Associations of the Great City of White Plains, New York to Share &amp; Exchange Ideas</p>
       <div class="hero-actions">
-        <a class="btn btn-primary" href="{{ '/events/' | withPrefix }}">See what's happening</a>
-        <a class="btn btn-outline" href="{{ '/neighborhoods/' | withPrefix }}">Neighborhoods</a>
+        <a class="btn btn-primary" href="{{ '/events/' | withPrefix }}">See all events</a>
+        <a class="btn btn-outline" href="{{ '/#neighborhoods' | withPrefix }}">Neighborhoods represented</a>
       </div>
       <ul class="hero-stats">
-        <li><span>Upcoming</span><strong>{{ eventStore.upcoming.length }} events</strong></li>
+        <li><span>Upcoming</span><strong>{{ eventStore.upcoming.length }} items</strong></li>
         <li><span>Neighborhoods</span><strong>{{ neighborhoodStore.count }}</strong></li>
         <li><span>Sources</span><strong>City, Library, BID, WPPAC</strong></li>
       </ul>
@@ -32,21 +31,133 @@ metaDescription: A neighborhood-centered guide to events, civic life, and useful
       <div>
         <p class="eyebrow">White Plains</p>
         <h2>A closer look at the city</h2>
-        <p>Views pulled from the older WPCNA site, carried forward here so the homepage feels rooted in the place it serves.</p>
+        <p>Scenes from across White Plains that reflect the city's civic character, neighborhoods, and public life.</p>
       </div>
     </div>
-    <div class="home-gallery-grid" aria-label="White Plains photo gallery">
-      {% for photo in site.homeGallery %}
-        {% if not loop.first %}
-          <figure class="home-gallery-card{% if loop.index == 2 %} home-gallery-card-wide{% endif %}">
+    <div class="home-photo-carousel" data-home-carousel aria-label="White Plains photo carousel">
+      <div class="home-photo-stage">
+        {% for photo in site.legacyCarousel %}
+          <figure class="home-photo-slide{% if loop.first %} is-active{% endif %}" data-home-carousel-slide{% if not loop.first %} hidden{% endif %}>
             <img src="{{ photo.src | withPrefix }}" alt="{{ photo.alt }}" loading="lazy">
-            <figcaption>{{ photo.label }}</figcaption>
           </figure>
-        {% endif %}
-      {% endfor %}
+        {% endfor %}
+      </div>
+      <div class="home-photo-toolbar">
+        <button class="carousel-btn" type="button" data-home-carousel-prev aria-label="Previous photo">&larr;</button>
+        <p class="home-photo-status" aria-live="polite"><span data-home-carousel-status>1 / {{ site.legacyCarousel.length }}</span></p>
+        <button class="carousel-btn" type="button" data-home-carousel-next aria-label="Next photo">&rarr;</button>
+      </div>
     </div>
   </div>
 </section>
+
+<section class="section section-alt represented-neighborhoods-section" id="neighborhoods" data-neighborhood-map>
+  <div class="wrap">
+    <div class="section-header">
+      <div>
+        <p class="eyebrow">Neighborhoods</p>
+        <h2>Neighborhoods represented by WPCNA</h2>
+        <p>Start with the neighborhoods currently represented through WPCNA, then open a neighborhood profile to learn more.</p>
+      </div>
+      <a class="link-arrow" href="{{ '/neighborhoods/' | withPrefix }}">Full neighborhood guide</a>
+    </div>
+
+    <div class="represented-neighborhoods-layout">
+      <div class="interactive-map-panel represented-map-panel">
+        <div class="interactive-map-frame represented-map-frame">
+          <img
+            src="{{ representedNeighborhoods.imagePath | withPrefix }}"
+            alt="{{ representedNeighborhoods.imageAlt }}"
+            width="{{ representedNeighborhoods.imageWidth }}"
+            height="{{ representedNeighborhoods.imageHeight }}"
+            loading="eager"
+          >
+          <svg
+            class="interactive-map-svg represented-map-svg"
+            viewBox="0 0 {{ representedNeighborhoods.imageWidth }} {{ representedNeighborhoods.imageHeight }}"
+            aria-label="Interactive map of the WPCNA neighborhoods represented on the homepage"
+            role="img"
+            focusable="false"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            {% for neighborhood in representedNeighborhoods.mappedItems %}
+              <a
+                href="{{ neighborhood.detailUrl | withPrefix }}"
+                data-map-region="{{ neighborhood.slug }}"
+                data-neighborhood-trigger
+                data-neighborhood-target="{{ neighborhood.slug }}"
+                aria-controls="represented-neighborhood-modal"
+                aria-haspopup="dialog"
+                aria-label="Open {{ neighborhood.name }} neighborhood profile"
+              >
+                <polygon points="{{ neighborhood.mapRegion.points }}"></polygon>
+              </a>
+            {% endfor %}
+          </svg>
+        </div>
+        <p class="represented-map-caption">Hover or focus a represented neighborhood on the map or in the list, then select it to open its profile.</p>
+      </div>
+
+      <div>
+        <div class="represented-neighborhoods-intro">
+          <p>These are the neighborhood associations currently represented through WPCNA on the homepage module.</p>
+        </div>
+
+        <div class="represented-neighborhood-grid">
+          {% for neighborhood in representedNeighborhoods.items %}
+            <button
+              class="represented-neighborhood-card"
+              type="button"
+              data-map-tile="{{ neighborhood.slug }}"
+              data-neighborhood-trigger
+              data-neighborhood-target="{{ neighborhood.slug }}"
+              aria-controls="represented-neighborhood-modal"
+              aria-haspopup="dialog"
+            >
+              <span class="represented-neighborhood-card-header">
+                <strong>{{ neighborhood.name }}</strong>
+                {% if neighborhood.reviewNote %}
+                  <span class="tag tag-muted">{{ neighborhood.reviewNote }}</span>
+                {% endif %}
+              </span>
+              <span class="represented-neighborhood-card-copy">{{ neighborhood.teaser }}</span>
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="represented-modal-backdrop" id="represented-neighborhood-modal" data-neighborhood-modal hidden>
+  <div class="represented-modal-shell" role="dialog" aria-modal="true" tabindex="-1" data-neighborhood-dialog>
+    <button class="represented-modal-close" type="button" data-neighborhood-close aria-label="Close neighborhood profile">Close</button>
+
+    {% for neighborhood in representedNeighborhoods.items %}
+      <article class="represented-modal-panel" data-neighborhood-panel="{{ neighborhood.slug }}" aria-hidden="true">
+        <div class="represented-modal-layout{% if neighborhood.hero %} represented-modal-layout-media{% endif %}">
+          {% if neighborhood.hero %}
+            <figure class="represented-modal-figure">
+              <img src="{{ neighborhood.hero.imagePath | withPrefix }}" alt="{{ neighborhood.hero.altText }}" loading="lazy">
+            </figure>
+          {% endif %}
+
+          <div class="represented-modal-copy">
+            <p class="eyebrow">{{ neighborhood.group }}</p>
+            <h2 id="represented-modal-title-{{ neighborhood.slug }}">{{ neighborhood.name }}</h2>
+            <p class="represented-modal-teaser">{{ neighborhood.teaser }}</p>
+            {% if neighborhood.reviewNote %}
+              <p class="represented-modal-note">{{ neighborhood.reviewNote }}</p>
+            {% endif %}
+            {% for paragraph in neighborhood.bodyParagraphs %}
+              <p>{{ paragraph }}</p>
+            {% endfor %}
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</div>
 
 <section class="section">
   <div class="wrap">
@@ -56,7 +167,7 @@ metaDescription: A neighborhood-centered guide to events, civic life, and useful
         <h2>Upcoming events</h2>
         <p>A curated selection of public meetings, arts events, downtown happenings, and neighborhood programs.</p>
       </div>
-      <a class="link-arrow" href="{{ '/events/' | withPrefix }}">See all happenings</a>
+      <a class="link-arrow" href="{{ '/events/' | withPrefix }}">See all events</a>
     </div>
 
     {% if eventStore.homeUpcoming.length %}
@@ -69,34 +180,9 @@ metaDescription: A neighborhood-centered guide to events, civic life, and useful
       <div class="empty-state">
         <h3>No upcoming events right now.</h3>
         <p>Check back soon or browse past events.</p>
-        <a class="btn btn-primary" href="{{ '/events/' | withPrefix }}">Browse what's happening</a>
+        <a class="btn btn-primary" href="{{ '/events/' | withPrefix }}">Browse events</a>
       </div>
     {% endif %}
-  </div>
-</section>
-
-<section class="section section-alt">
-  <div class="wrap">
-    <div class="section-header">
-      <div>
-        <p class="eyebrow">Neighborhoods</p>
-        <h2>Explore White Plains</h2>
-        <p>{{ neighborhoodStore.count }} neighborhoods from Downtown to Saxon Woods.</p>
-      </div>
-      <a class="link-arrow" href="{{ '/neighborhoods/' | withPrefix }}">All neighborhoods</a>
-    </div>
-    <div class="carousel-header">
-      <span class="archive-count">{{ neighborhoodStore.count }} neighborhoods</span>
-      <div class="carousel-controls">
-        <button class="carousel-btn" type="button" data-carousel-prev aria-label="Previous">&larr;</button>
-        <button class="carousel-btn" type="button" data-carousel-next aria-label="Next">&rarr;</button>
-      </div>
-    </div>
-    <div class="carousel-track" data-carousel-track>
-      {% for neighborhood in neighborhoodStore.all %}
-        {{ neighborhoodCard(neighborhood) }}
-      {% endfor %}
-    </div>
   </div>
 </section>
 
@@ -119,19 +205,18 @@ metaDescription: A neighborhood-centered guide to events, civic life, and useful
 
 <section class="section section-alt">
   <div class="wrap">
-    <div class="spotlight">
-      <div>
-        <p class="eyebrow">About</p>
-        <h2>Neighborhood voices, citywide view</h2>
-        <p><strong>WPCNA</strong> &mdash; the <strong>White Plains Council of Neighborhood Associations</strong> &mdash; brings neighborhood associations together, shares information across the city, and helps residents keep track of what matters in White Plains. {{ site.purpose }}</p>
-        <p style="margin-top:1rem"><a class="btn btn-primary" href="{{ '/about/' | withPrefix }}">About WPCNA</a></p>
-      </div>
-      <div class="spotlight-card">
-        <p class="eyebrow">Contact</p>
-        <h3>Contact WPCNA</h3>
-        <p>{{ site.location }}</p>
-        <p>{{ site.meetingNote }}</p>
-        <a class="btn btn-outline" href="{{ '/about/#contact-form' | withPrefix }}" style="margin-top:0.75rem">Get in touch</a>
+    <div class="spotlight-card spotlight-combined">
+      <p class="eyebrow">About WPCNA</p>
+      <h2>Neighborhood voices, citywide view</h2>
+      <p><strong>WPCNA</strong> &mdash; the <strong>White Plains Council of Neighborhood Associations</strong> &mdash; brings neighborhood associations together, shares information across the city, and helps residents keep track of what matters in White Plains. {{ site.purpose }}</p>
+
+      <h3>Contact WPCNA</h3>
+      <p>{{ site.location }}</p>
+      <p>{{ site.meetingNote }}</p>
+
+      <div class="spotlight-actions">
+        <a class="btn btn-primary" href="{{ '/about/' | withPrefix }}">About WPCNA</a>
+        <a class="btn btn-outline" href="{{ '/about/#contact-form' | withPrefix }}">Get in touch</a>
       </div>
     </div>
   </div>

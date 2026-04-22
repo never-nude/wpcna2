@@ -91,6 +91,90 @@ if (track && prev && next) {
   update();
 }
 
+/* Homepage photo carousel */
+const homeCarousel = document.querySelector("[data-home-carousel]");
+
+if (homeCarousel) {
+  const slides = Array.from(homeCarousel.querySelectorAll("[data-home-carousel-slide]"));
+  const prevBtn = homeCarousel.querySelector("[data-home-carousel-prev]");
+  const nextBtn = homeCarousel.querySelector("[data-home-carousel-next]");
+  const status = homeCarousel.querySelector("[data-home-carousel-status]");
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const rotationDelayMs = 5000;
+  let activeIndex = Math.max(0, slides.findIndex((slide) => !slide.hidden));
+  let rotationTimer = 0;
+
+  const showSlide = (nextIndex) => {
+    activeIndex = (nextIndex + slides.length) % slides.length;
+    const prevIndex = slides.length > 2 ? (activeIndex - 1 + slides.length) % slides.length : -1;
+    const nextVisibleIndex = slides.length > 1 ? (activeIndex + 1) % slides.length : -1;
+
+    slides.forEach((slide, index) => {
+      const isActive = index === activeIndex;
+      const isPrev = index === prevIndex;
+      const isNext = index === nextVisibleIndex && index !== prevIndex;
+      const isVisible = isActive || isPrev || isNext;
+
+      slide.hidden = !isVisible;
+      slide.classList.toggle("is-active", isActive);
+      slide.classList.toggle("is-prev", isPrev);
+      slide.classList.toggle("is-next", isNext);
+      slide.setAttribute("aria-hidden", String(!isActive));
+    });
+
+    if (status) {
+      status.textContent = `${activeIndex + 1} / ${slides.length}`;
+    }
+  };
+
+  const stopRotation = () => {
+    window.clearInterval(rotationTimer);
+    rotationTimer = 0;
+  };
+
+  const startRotation = () => {
+    stopRotation();
+
+    if (slides.length < 2 || prefersReducedMotion.matches) {
+      return;
+    }
+
+    rotationTimer = window.setInterval(() => {
+      showSlide(activeIndex + 1);
+    }, rotationDelayMs);
+  };
+
+  if (slides.length) {
+    showSlide(activeIndex);
+  }
+
+  prevBtn?.addEventListener("click", () => {
+    showSlide(activeIndex - 1);
+    startRotation();
+  });
+
+  nextBtn?.addEventListener("click", () => {
+    showSlide(activeIndex + 1);
+    startRotation();
+  });
+
+  homeCarousel.addEventListener("mouseenter", stopRotation);
+  homeCarousel.addEventListener("mouseleave", startRotation);
+  homeCarousel.addEventListener("focusin", stopRotation);
+  homeCarousel.addEventListener("focusout", (event) => {
+    if (homeCarousel.contains(event.relatedTarget)) return;
+    startRotation();
+  });
+
+  if (typeof prefersReducedMotion.addEventListener === "function") {
+    prefersReducedMotion.addEventListener("change", startRotation);
+  } else if (typeof prefersReducedMotion.addListener === "function") {
+    prefersReducedMotion.addListener(startRotation);
+  }
+
+  startRotation();
+}
+
 /* Community posting form */
 const postingForm = document.querySelector("[data-posting-form]");
 
@@ -165,11 +249,19 @@ if (neighborhoodMap) {
   const tiles = Array.from(neighborhoodMap.querySelectorAll("[data-map-tile]"));
   const tileBySlug = new Map(tiles.map((tile) => [tile.dataset.mapTile, tile]));
   const regionBySlug = new Map(regionLinks.map((region) => [region.dataset.mapRegion, region]));
-  let activeSlug = "";
+  let pinnedSlug = "";
+
+  const getKeyboardFocusSlug = () => {
+    const focusedSource = neighborhoodMap.querySelector(
+      "[data-map-region]:focus-visible, [data-map-tile]:focus-visible"
+    );
+
+    if (!focusedSource) return "";
+
+    return focusedSource.dataset.mapRegion || focusedSource.dataset.mapTile || "";
+  };
 
   const setActive = (slug = "") => {
-    activeSlug = slug;
-
     regionLinks.forEach((region) => {
       region.classList.toggle("is-active", region.dataset.mapRegion === slug);
     });
@@ -179,10 +271,28 @@ if (neighborhoodMap) {
     });
   };
 
+  const restoreActive = () => {
+    setActive(getKeyboardFocusSlug() || pinnedSlug);
+  };
+
   const bindInteractiveState = (slug, source) => {
     source.addEventListener("mouseenter", () => setActive(slug));
-    source.addEventListener("focus", () => setActive(slug));
-    source.addEventListener("focusin", () => setActive(slug));
+
+    source.addEventListener("mouseleave", restoreActive);
+
+    source.addEventListener("focusin", () => {
+      window.requestAnimationFrame(() => {
+        if (source.matches(":focus-visible")) {
+          setActive(slug);
+        } else {
+          restoreActive();
+        }
+      });
+    });
+
+    source.addEventListener("focusout", () => {
+      window.requestAnimationFrame(restoreActive);
+    });
   };
 
   regionLinks.forEach((region) => {
@@ -195,13 +305,161 @@ if (neighborhoodMap) {
     bindInteractiveState(slug, tile);
   });
 
-  neighborhoodMap.addEventListener("mouseleave", () => setActive(activeSlug));
+  neighborhoodMap.addEventListener("mouseleave", restoreActive);
 
   const params = new URLSearchParams(window.location.search);
   const highlightSlug = params.get("highlight");
 
   if (highlightSlug && regionBySlug.has(highlightSlug) && tileBySlug.has(highlightSlug)) {
+    pinnedSlug = highlightSlug;
     setActive(highlightSlug);
     tileBySlug.get(highlightSlug).scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
+}
+
+/* Represented neighborhood modal */
+const neighborhoodModal = document.querySelector("[data-neighborhood-modal]");
+
+if (neighborhoodModal) {
+  const dialog = neighborhoodModal.querySelector("[data-neighborhood-dialog]");
+  const closeButton = neighborhoodModal.querySelector("[data-neighborhood-close]");
+  const panels = Array.from(neighborhoodModal.querySelectorAll("[data-neighborhood-panel]"));
+  const triggers = Array.from(document.querySelectorAll("[data-neighborhood-trigger]"));
+  let lastTrigger = null;
+
+  const getFocusableElements = () => {
+    if (!dialog) return [];
+
+    return Array.from(
+      dialog.querySelectorAll(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter(
+      (element) =>
+        !element.hidden &&
+        !element.closest("[hidden]") &&
+        !element.closest('[aria-hidden="true"]') &&
+        element.getAttribute("aria-hidden") !== "true" &&
+        element.offsetParent !== null
+    );
+  };
+
+  const setActiveTriggers = (slug = "") => {
+    triggers.forEach((trigger) => {
+      trigger.classList.toggle("is-active", trigger.dataset.neighborhoodTarget === slug);
+    });
+  };
+
+  const showPanel = (slug) => {
+    const panel = panels.find((item) => item.dataset.neighborhoodPanel === slug);
+
+    if (!panel || !dialog) return false;
+
+    panels.forEach((item) => {
+      const isActive = item === panel;
+      item.classList.toggle("is-active", isActive);
+      item.setAttribute("aria-hidden", String(!isActive));
+    });
+
+    const title = panel.querySelector("h2[id]");
+
+    if (title) {
+      dialog.setAttribute("aria-labelledby", title.id);
+    } else {
+      dialog.removeAttribute("aria-labelledby");
+    }
+
+    setActiveTriggers(slug);
+    return true;
+  };
+
+  const openModal = (slug, trigger) => {
+    if (!dialog) return;
+
+    lastTrigger = trigger || null;
+    neighborhoodModal.hidden = false;
+    neighborhoodModal.removeAttribute("hidden");
+    document.body.classList.add("has-modal-open");
+
+    window.requestAnimationFrame(() => {
+      if (!showPanel(slug)) {
+        closeModal();
+        return;
+      }
+
+      dialog.scrollTop = 0;
+      dialog.focus();
+    });
+  };
+
+  const closeModal = () => {
+    if (neighborhoodModal.hidden) return;
+
+    neighborhoodModal.hidden = true;
+    neighborhoodModal.setAttribute("hidden", "");
+    document.body.classList.remove("has-modal-open");
+    panels.forEach((panel) => {
+      panel.classList.remove("is-active");
+      panel.setAttribute("aria-hidden", "true");
+    });
+    setActiveTriggers("");
+
+    const returnTarget =
+      lastTrigger?.dataset.mapRegion && lastTrigger.dataset.neighborhoodTarget
+        ? document.querySelector(`[data-map-tile="${lastTrigger.dataset.neighborhoodTarget}"]`) || lastTrigger
+        : lastTrigger;
+
+    if (returnTarget && typeof returnTarget.focus === "function") {
+      returnTarget.focus();
+    }
+  };
+
+  triggers.forEach((trigger) => {
+    trigger.addEventListener("click", (event) => {
+      if (trigger.hasAttribute("href")) {
+        event.preventDefault();
+      }
+
+      openModal(trigger.dataset.neighborhoodTarget || "", trigger);
+    });
+  });
+
+  closeButton?.addEventListener("click", closeModal);
+
+  neighborhoodModal.addEventListener("click", (event) => {
+    if (event.target === neighborhoodModal) {
+      closeModal();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (neighborhoodModal.hidden || !dialog) return;
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeModal();
+      return;
+    }
+
+    if (event.key !== "Tab") return;
+
+    const focusable = getFocusableElements();
+
+    if (!focusable.length) {
+      event.preventDefault();
+      dialog.focus();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
 }

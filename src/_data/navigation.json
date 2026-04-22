@@ -1,29 +1,36 @@
 [
   {
+    "id": "home",
     "label": "Home",
     "url": "/"
   },
   {
+    "id": "neighborhoods",
     "label": "Neighborhoods",
-    "url": "/neighborhoods/"
+    "url": "/#neighborhoods"
   },
   {
-    "label": "What's Happening",
+    "id": "events",
+    "label": "Events",
     "url": "/events/"
   },
   {
+    "id": "community-posting",
     "label": "Community Posting",
-    "url": "/posting/"
+    "url": "/community-posting/"
   },
   {
+    "id": "agendas",
     "label": "Agendas",
     "url": "/agendas/"
   },
   {
+    "id": "handbook",
     "label": "CNA Workshop Handbook",
     "url": "/handbook/"
   },
   {
+    "id": "about",
     "label": "About",
     "url": "/about/"
   }

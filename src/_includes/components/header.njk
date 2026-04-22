@@ -20,7 +20,18 @@
     <nav class="site-nav" id="site-nav" aria-label="Primary navigation" data-nav-menu>
       <ul class="nav-list">
         {% for item in navigation %}
-          {% set isCurrent = page.url == item.url or (item.url != "/" and page.url.startsWith(item.url)) %}
+          {% set isCurrent = false %}
+          {% if item.id == "home" %}
+            {% set isCurrent = page.url == "/" %}
+          {% elif item.id == "neighborhoods" %}
+            {% set isCurrent = page.url == "/neighborhood-map/" or page.url.startsWith("/neighborhoods/") %}
+          {% elif item.id == "community-posting" %}
+            {% set isCurrent = page.url == "/community-posting/" or page.url == "/posting/" %}
+          {% elif item.id == "handbook" %}
+            {% set isCurrent = page.url == "/handbook/" or page.url == "/workshops/" %}
+          {% else %}
+            {% set isCurrent = page.url == item.url or (item.url != "/" and page.url.startsWith(item.url)) %}
+          {% endif %}
           <li>
             <a href="{{ item.url | withPrefix }}"{% if isCurrent %} aria-current="page"{% endif %}>{{ item.label }}</a>
           </li>
